@@ -71,13 +71,24 @@ async function runAgentWithTools(query, maxIterations = 30) {
     for (const toolCall of response.tool_calls) {
       const foundTool = tools.find((t) => t.name === toolCall.name);
       if (foundTool) {
-        const toolResult = await foundTool.invoke(toolCall.args);
-        messages.push(
-          new ToolMessage({
-            content: toolResult,
-            tool_call_id: toolCall.id,
-          }),
-        );
+        try {
+          const toolResult = await foundTool.invoke(toolCall.args);
+          messages.push(
+            new ToolMessage({
+              content:
+                typeof toolResult === "string" ? toolResult : (toolResult?.text || JSON.stringify(toolResult) || ""),
+              tool_call_id: toolCall.id,
+            }),
+          );
+        } catch (error) {
+          console.error(chalk.red(`❌ 工具调用失败 [${toolCall.name}]: ${error.message}`));
+          messages.push(
+            new ToolMessage({
+              content: `工具调用错误: ${error.message}`,
+              tool_call_id: toolCall.id,
+            }),
+          );
+        }
       }
     }
   }
